@@ -11,3 +11,15 @@ pip install -r requirements.txt
 # running the algorithm
 python main.py
 ```
+
+## Goals
+phenotype:
+- List of tickers and their ratio in the portfolio
+- At least 1 ticker in portfolio
+
+fitness:
+- how much that portfolio increased in a specific time period, or in multiple timeperiods
+
+genotype:
+- properties for a strategy to be decided
+- portfolio wieghting strategies
