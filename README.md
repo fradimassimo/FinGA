@@ -13,13 +13,22 @@ python main.py
 ```
 
 ## Goals
+Single stock, the goal is to generate a buy signal and a sell signal
+buying has to be first, we cannot buy if we already bought before, selling has to be after the buy, when we sold, we calculate fitness
+
 phenotype:
-- List of tickers and their ratio in the portfolio
-- At least 1 ticker in portfolio
+- buy signal
+- sell signal
 
 fitness:
-- how much that portfolio increased in a specific time period, or in multiple timeperiods
+- (sell_price - buy_cost) / days
 
-genotype:
-- properties for a strategy to be decided
-- portfolio wieghting strategies
+Genotype:
+- parameters of the indicator
+- Thresholds for the buy and sell signal
+
+
+Future:
+- combine multiple indicators
+- combine with genetic programming
+- Fitness should be an average of multiple scenarios
