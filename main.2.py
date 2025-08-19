@@ -41,11 +41,14 @@ toolbox.register(
 
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
+stock = yf.Ticker("AAPL")
+price = stock.history(interval="1d", period="1y", start="2012-01-01")["Close"]
 
-def evaluate(individual):
-    df = macd_crossover_indicator(
-        individual.macd_short, individual.macd_long, 9, "MSFT", "2012-01-01"
-    )
+
+def evaluate(individual, price):
+    macd_short = individual[0]
+    macd_long = individual[1]
+    df = macd_crossover_indicator(macd_short, macd_long, 9, price)
     skip_days = df.index[50]
     profits = []
     while True:
@@ -62,18 +65,29 @@ def evaluate(individual):
             skip_days = sell_idx
         except IndexError:
             break
-    return sum(profits)
+    return (sum(profits),)
 
 
-def macd_crossover_indicator(
-    ema_short_days, ema_long_days, signal_days, ticker, start_day
-):
+def gene_mutation(individual, indpb):
+    if random.random() < indpb:
+        individual[0] = random.randint(5, 20)
+    if random.random() < indpb:
+        individual[1] = random.randint(21, 50)
+
+    return (individual,)
+
+
+toolbox.register("mate", tools.cxOnePoint)
+toolbox.register("mutate", gene_mutation, indpb=0.1)
+toolbox.register("select", tools.selTournament, tournsize=3)
+toolbox.register("evaluate", evaluate, price=price)
+
+
+def macd_crossover_indicator(ema_short_days, ema_long_days, signal_days, price):
     """
     shows trends, if the short ema dips below the long ema the trend is going down
     if the short ema goes above the long, the trend is going up
     """
-    stock = yf.Ticker(ticker)
-    price = stock.history(interval="1d", period="6mo", start=start_day)["Close"]
     ema_short = ema_indicator(ema_short_days, price)
     ema_long = ema_indicator(ema_long_days, price)
 
@@ -90,12 +104,40 @@ def ema_indicator(days, price):
     return price.ewm(span=days, adjust=False).mean()
 
 
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.1)
-toolbox.register("select", tools.selTournament, tournsize=3)
-toolbox.register("evaluate", evaluate)
-
 if __name__ == "__main__":
-    pop = toolbox.population(n=5)
-    for ind in pop:
-        print(ind)
+    pop = toolbox.population(n=100)
+    CXPB, MUTPB, NGEN = 0.5, 0.3, 40
+
+    # Evaluate the entire population
+    fitnesses = map(toolbox.evaluate, pop)
+    for ind, fit in zip(pop, fitnesses):
+        ind.fitness.values = fit
+
+    for g in range(NGEN):
+        # Select the next generation individuals
+        offspring = toolbox.select(pop, len(pop))
+        # Clone the selected individuals
+        offspring = list(map(toolbox.clone, offspring))
+
+        # Apply crossover and mutation on the offspring
+        for child1, child2 in zip(offspring[::2], offspring[1::2]):
+            if random.random() < CXPB:
+                toolbox.mate(child1, child2)
+                del child1.fitness.values
+                del child2.fitness.values
+
+        for mutant in offspring:
+            if random.random() < MUTPB:
+                toolbox.mutate(mutant)
+                del mutant.fitness.values
+
+        # Evaluate the individuals with an invalid fitness
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+
+        # The population is entirely replaced by the offspring
+        pop[:] = offspring
+
+    print(pop)
