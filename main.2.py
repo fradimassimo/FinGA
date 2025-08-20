@@ -2,6 +2,7 @@ from deap import base, creator, tools
 import yfinance as yf
 import pandas as pd
 import random
+import numpy as np
 
 # PROBLEM DEFINITION
 """
@@ -88,7 +89,9 @@ def mometum_indicator(momentum_days, signal_threshold, price):
     return momentum
 
 
-def macd_crossover_indicator(ema_short_days, ema_long_days, signal_days, price):
+def macd_crossover_indicator(
+    ema_short_days, ema_long_days, signal_days, buy_threshold, sell_threshold, price
+):
     """
     shows trends, if the short ema dips below the long ema the trend is going down
     if the short ema goes above the long, the trend is going up
@@ -101,8 +104,12 @@ def macd_crossover_indicator(ema_short_days, ema_long_days, signal_days, price):
     signal_curve = ema_indicator(signal_days, macd)
     macd_crossover = macd - signal_curve
 
-    macd_crossover = macd_crossover > 0
-    return pd.DataFrame({"macd_crossover": macd_crossover, "price": price})
+    conditions = [macd_crossover > buy_threshold, macd_crossover < sell_threshold]
+    choices = [True, False]
+    indicator = pd.Series(
+        np.select(conditions, choices, default=None), index=macd_crossover.index
+    )
+    return indicator
 
 
 def ema_indicator(days, price):
