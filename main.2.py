@@ -83,6 +83,11 @@ toolbox.register("select", tools.selTournament, tournsize=3)
 toolbox.register("evaluate", evaluate, price=price)
 
 
+def mometum_indicator(momentum_days, signal_threshold, price):
+    momentum = price.pct_change(periods=momentum_days) < signal_threshold
+    return momentum
+
+
 def macd_crossover_indicator(ema_short_days, ema_long_days, signal_days, price):
     """
     shows trends, if the short ema dips below the long ema the trend is going down
