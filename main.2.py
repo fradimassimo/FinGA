@@ -84,37 +84,6 @@ toolbox.register("select", tools.selTournament, tournsize=3)
 toolbox.register("evaluate", evaluate, price=price)
 
 
-def mometum_indicator(momentum_days, signal_threshold, price):
-    momentum = price.pct_change(periods=momentum_days) < signal_threshold
-    return momentum
-
-
-def macd_crossover_indicator(
-    ema_short_days, ema_long_days, signal_days, buy_threshold, sell_threshold, price
-):
-    """
-    shows trends, if the short ema dips below the long ema the trend is going down
-    if the short ema goes above the long, the trend is going up
-    """
-    ema_short = ema_indicator(ema_short_days, price)
-    ema_long = ema_indicator(ema_long_days, price)
-
-    macd = ema_short - ema_long
-
-    signal_curve = ema_indicator(signal_days, macd)
-    macd_crossover = macd - signal_curve
-
-    conditions = [macd_crossover > buy_threshold, macd_crossover < sell_threshold]
-    choices = [True, False]
-    indicator = pd.Series(
-        np.select(conditions, choices, default=None), index=macd_crossover.index
-    )
-    return indicator
-
-
-def ema_indicator(days, price):
-    return price.ewm(span=days, adjust=False).mean()
-
 
 if __name__ == "__main__":
     pop = toolbox.population(n=100)
