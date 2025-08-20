@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def W100R_indicator(days, buy_threshold, sell_threshold, close, high, low):
+def w100r_indicator(days, buy_threshold, sell_threshold, close, high, low):
     """
     shows trends of a stock being overbought or oversold, if the indicator is below buy_treshold,
     is oversold -> buy elif indicator is above sell_treshold is overbought -> sell
@@ -45,7 +45,7 @@ def lowest_low(days, low):
     return low.rolling(window=days).min()
 
 
-def mometum_indicator(momentum_days, buy_threshold, sell_threshold, close):
+def momentum_indicator(momentum_days, buy_threshold, sell_threshold, close):
     momentum = close - close.shift(momentum_days)
 
     conditions = [momentum < buy_threshold, momentum > sell_threshold]
