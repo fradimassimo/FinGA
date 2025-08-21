@@ -12,6 +12,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## TODO
+- add logging of fitness of initial and final population
+- add graphs
+- punish invalid individual fitness
+- adding more stocks, more timeperiods, getting a combined profit
+- genetic programming ()
+
 ## Goals
 Single stock, the goal is to generate a buy signal and a sell signal
 buying has to be first, we cannot buy if we already bought before, selling has to be after the buy, when we sold, we calculate fitness
