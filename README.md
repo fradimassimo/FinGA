@@ -15,9 +15,12 @@ python main.py
 ## TODO
 - add logging of fitness of initial and final population
 - add graphs
+- genes need proper range and proper mutations
+- add number of trades to optimization -> multi-objective pareto front
 - punish invalid individual fitness
-- adding more stocks, more timeperiods, getting a combined profit
+- adding more stocks, more time periods, getting a combined profit
 - genetic programming ()
+- more plots
 
 ## Goals
 Single stock, the goal is to generate a buy signal and a sell signal

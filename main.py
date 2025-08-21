@@ -1,9 +1,51 @@
-from deap import base, creator, tools
+from deap import base, creator, tools, algorithms
 import yfinance as yf
 import random
 from indicators import macd_crossover_indicator, w100r_indicator, momentum_indicator
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+
+
+def plot(logbook):
+    gen = logbook.select("gen")
+    fit_mins = logbook.select("min")
+
+    fig, ax1 = plt.subplots()
+    line1 = ax1.plot(gen, fit_mins, "b-", label="Minimum Fitness")
+    ax1.set_xlabel("Generation")
+    ax1.set_ylabel("Fitness", color="b")
+    for tl in ax1.get_yticklabels():
+        tl.set_color("b")
+
+    plt.show()
+    plt.savefig("result.jpg")
+
+
+def feasible(individual):
+    macd_short_days = individual[0]
+    macd_long_days = individual[1]
+    # signal_days = individual[2]
+    macd_buy_threshold = individual[3]
+    macd_sell_threshold = individual[4]
+
+    # w100r_days = individual[5]
+    w100r_buy_threshold = individual[6]
+    w100r_sell_threshold = individual[7]
+
+    # momentum_days = individual[8]
+    momentum_buy_threshold = individual[9]
+    momentum_sell_threshold = individual[10]
+
+    if macd_short_days > macd_long_days:
+        return False
+    if macd_buy_threshold < macd_sell_threshold:
+        return False
+    if w100r_buy_threshold > w100r_sell_threshold:
+        return False
+    if momentum_buy_threshold > momentum_sell_threshold:
+        return False
+    return True
 
 
 def evaluate(individual, history):
@@ -113,46 +155,100 @@ def algorithm(toolbox):
     return pop
 
 
+def uniform_random_scaled(scaler):
+    return scaler * random.random()
+
+
+def mutate(individual, indpb):
+    if random.random() < indpb:
+        individual[0] = max(1, min(individual[0] + random.randint(-2, 2), 100))
+    if random.random() < indpb:
+        individual[1] = max(1, min(individual[1] + random.randint(-2, 2), 100))
+    if random.random() < indpb:
+        individual[2] = max(1, min(individual[2] + random.randint(-2, 2), 100))
+    if random.random() < indpb:
+        individual[3] = individual[3] + random.gauss(0, 5)
+    if random.random() < indpb:
+        individual[4] = individual[4] + random.gauss(0, 5)
+    if random.random() < indpb:
+        individual[5] = max(1, min(individual[5] + random.randint(-2, 2), 100))
+    if random.random() < indpb:
+        individual[6] = max(-100, min(individual[6] + random.gauss(0, 5), 0))
+    if random.random() < indpb:
+        individual[7] = max(-100, min(individual[7] + random.gauss(0, 5), 0))
+    if random.random() < indpb:
+        individual[8] = max(1, min(individual[8] + random.randint(-2, 2), 100))
+    if random.random() < indpb:
+        individual[9] = individual[9] + random.gauss(0, 5)
+    if random.random() < indpb:
+        individual[10] = individual[10] + random.gauss(0, 5)
+    return (individual,)
+
+
 def main():
     creator.create(
         "FitnessMax", base.Fitness, weights=(1.0,)
     )  # Minimization problem -> weights = (-1.0)
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
-    IND_SIZE = 1  # NB using initRepeat = number of genes for each individual [treshold, pI1, pI2] but in the case below is number of cycles
     toolbox = base.Toolbox()
 
-    toolbox.register("random", random.randint, 1, 50)  # n_slow
+    toolbox.register("day_gene_init", random.randint, 1, 100)  # n_slow
+    toolbox.register("threshold_gene_init", random.gauss, 0, 25)
+    toolbox.register("w100r_threshold_gene_init", uniform_random_scaled, -100)
     toolbox.register(
         "individual",
         tools.initCycle,
         creator.Individual,
         (
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
-            toolbox.random,
+            toolbox.day_gene_init,
+            toolbox.day_gene_init,
+            toolbox.day_gene_init,
+            toolbox.threshold_gene_init,
+            toolbox.threshold_gene_init,
+            toolbox.day_gene_init,
+            toolbox.w100r_threshold_gene_init,
+            toolbox.w100r_threshold_gene_init,
+            toolbox.day_gene_init,
+            toolbox.threshold_gene_init,
+            toolbox.threshold_gene_init,
         ),
-        n=IND_SIZE,
+        n=1,
     )
 
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
     stock = yf.Ticker("AAPL")
     history = stock.history(interval="1d", period="1y", start="2012-01-01")
+
     toolbox.register("mate", tools.cxOnePoint)
-    toolbox.register("mutate", tools.mutUniformInt, low=1, up=50, indpb=0.1)
+    toolbox.register("mutate", mutate, indpb=0.1)
     toolbox.register("select", tools.selTournament, tournsize=3)
     toolbox.register("evaluate", evaluate, history=history)
-    final_pop = algorithm(toolbox)
-    print(final_pop)
+    toolbox.decorate("evaluate", tools.DeltaPenalty(feasible, -10.0))
+    # final_pop = algorithm(toolbox)
+    stats = tools.Statistics(key=lambda ind: ind.fitness.values)
+    stats.register("avg", np.mean)
+    stats.register("std", np.std)
+    stats.register("min", np.min)
+    stats.register("max", np.max)
+    halloffame = tools.HallOfFame(25)
+    initial_pop = toolbox.population(n=100)
+    final_pop, logbook = algorithms.eaSimple(
+        initial_pop,
+        toolbox,
+        cxpb=0.5,
+        mutpb=0.2,
+        ngen=150,
+        stats=stats,
+        halloffame=halloffame,
+        verbose=True,
+    )
+    for ind in halloffame:
+        print(ind)
+        print(toolbox.evaluate(ind))
+    print(logbook)
+    plot(logbook)
 
 
 if __name__ == "__main__":
