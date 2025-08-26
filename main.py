@@ -1,3 +1,4 @@
+import json
 from deap import base, creator, tools, algorithms
 import yfinance as yf
 import random
@@ -49,10 +50,6 @@ def feasible(individual):
 
 
 def evaluate(individual, history):
-    close = history["Close"]
-    low = history["Low"]
-    high = history["High"]
-
     macd_short_days = individual[0]
     macd_long_days = individual[1]
     signal_days = individual[2]
@@ -67,54 +64,65 @@ def evaluate(individual, history):
     momentum_buy_threshold = individual[9]
     momentum_sell_threshold = individual[10]
 
-    macd = macd_crossover_indicator(
-        macd_short_days,
-        macd_long_days,
-        signal_days,
-        macd_buy_threshold,
-        macd_sell_threshold,
-        close,
-    )
-    w100r = w100r_indicator(
-        w100r_days, w100r_buy_threshold, w100r_sell_threshold, close, high, low
-    )
-    momentum = momentum_indicator(
-        momentum_days, momentum_buy_threshold, momentum_sell_threshold, close
-    )
+    profits_per_stock = {}
+    transactions_per_stock = {}
+    for ticker in history.columns.get_level_values("Ticker"):
+        profits = []
+        stock_history = history[ticker]
+        macd = macd_crossover_indicator(
+            macd_short_days,
+            macd_long_days,
+            signal_days,
+            macd_buy_threshold,
+            macd_sell_threshold,
+            stock_history["Close"],
+        )
+        w100r = w100r_indicator(
+            w100r_days, w100r_buy_threshold, w100r_sell_threshold, stock_history
+        )
+        momentum = momentum_indicator(
+            momentum_days,
+            momentum_buy_threshold,
+            momentum_sell_threshold,
+            stock_history["Close"],
+        )
 
-    df = pd.concat([close, macd, w100r, momentum], axis=1)
-    df.columns = ["Close", "MACD", "W100R", "MOMENTUM"]
+        df = pd.concat([stock_history["Close"], macd, w100r, momentum], axis=1)
+        df.columns = ["Close", "MACD", "W100R", "MOMENTUM"]
 
-    df["true_count"] = (df[["MACD", "W100R", "MOMENTUM"]] == True).sum(axis=1)
-    df["false_count"] = (df[["MACD", "W100R", "MOMENTUM"]] == False).sum(axis=1)
-    conditions = [2 <= df["true_count"], 2 <= df["false_count"]]
-    choices = [True, False]
+        df["true_count"] = (df[["MACD", "W100R", "MOMENTUM"]] == True).sum(axis=1)
+        df["false_count"] = (df[["MACD", "W100R", "MOMENTUM"]] == False).sum(axis=1)
+        conditions = [2 <= df["true_count"], 2 <= df["false_count"]]
+        choices = [True, False]
 
-    df["signal"] = pd.Series(
-        np.select(conditions, choices, default=None), index=df.index
-    )
+        df["signal"] = pd.Series(
+            np.select(conditions, choices, default=None), index=df.index
+        )
+        skip_days = df.index[
+            max(macd_short_days, macd_long_days, signal_days, w100r_days, momentum_days)
+        ]
+        while True:
+            try:
+                df = df.loc[skip_days:]
 
-    skip_days = df.index[
-        max(macd_short_days, macd_long_days, signal_days, w100r_days, momentum_days)
-    ]
-    profits = []
-    while True:
-        try:
-            df = df.loc[skip_days:]
+                buy_idx = df.loc[df["signal"] == True].index[0]
+                buy_price = df.loc[buy_idx, "Close"]
 
-            buy_idx = df.loc[df["signal"] == True].index[0]
-            buy_price = df.loc[buy_idx, "Close"]
+                sell_idx = (
+                    df.loc[buy_idx:].loc[df["signal"].loc[buy_idx:] == False].index[0]
+                )
+                sell_price = df.loc[sell_idx, "Close"]
+                profit = float(
+                    (sell_price - buy_price) / buy_price
+                )  # normalize by buy price, so stock price is accounted for
+                profits.append(profit)
+                skip_days = sell_idx
+            except IndexError:
+                break
 
-            sell_idx = (
-                df.loc[buy_idx:].loc[df["signal"].loc[buy_idx:] == False].index[0]
-            )
-            sell_price = df.loc[sell_idx, "Close"]
-            profit = float(sell_price - buy_price)
-            profits.append(profit)
-            skip_days = sell_idx
-        except IndexError:
-            break
-    return (sum(profits),)
+        profits_per_stock[ticker] = sum(profits)
+        transactions_per_stock[ticker] = len(profits)
+    return (sum(profits_per_stock.values()), sum(transactions_per_stock.values()))
 
 
 def algorithm(toolbox):
@@ -187,9 +195,9 @@ def mutate(individual, indpb):
 
 def main():
     creator.create(
-        "FitnessMax", base.Fitness, weights=(1.0,)
+        "FitnessMaxMin", base.Fitness, weights=(1.0, -1.0)
     )  # Minimization problem -> weights = (-1.0)
-    creator.create("Individual", list, fitness=creator.FitnessMax)
+    creator.create("Individual", list, fitness=creator.FitnessMaxMin)
 
     toolbox = base.Toolbox()
 
@@ -218,8 +226,14 @@ def main():
 
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-    stock = yf.Ticker("AAPL")
-    history = stock.history(interval="1d", period="1y", start="2012-01-01")
+    with open("nasdaq.json", "r") as f:
+        ticker_list = json.load(f)
+    stocks = yf.Tickers(ticker_list)
+    history = stocks.history(interval="1d", period="5y", start="2005-01-01")
+    history = history.dropna(
+        axis=1
+    )  # discard stocks that have prices missing (maybe they were added later than 2014)
+    history = history.swaplevel("Price", "Ticker", 1)
 
     toolbox.register("mate", tools.cxOnePoint)
     toolbox.register("mutate", mutate, indpb=0.1)
@@ -239,7 +253,7 @@ def main():
         toolbox,
         cxpb=0.5,
         mutpb=0.2,
-        ngen=150,
+        ngen=100,
         stats=stats,
         halloffame=halloffame,
         verbose=True,

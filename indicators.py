@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def w100r_indicator(days, buy_threshold, sell_threshold, close, high, low):
+def w100r_indicator(days, buy_threshold, sell_threshold, history):
     """
     shows trends of a stock being overbought or oversold, if the indicator is below buy_treshold,
     is oversold -> buy elif indicator is above sell_treshold is overbought -> sell
@@ -18,9 +18,9 @@ def w100r_indicator(days, buy_threshold, sell_threshold, close, high, low):
     to be optimized [buy_treshold, sell_treshold]
     normal_values = Buy < -80 (oversold), Sell > -20 (overbought).
     """
-    h_high = highest_high(days, high)
-    l_low = lowest_low(days, low)
-    W100R = ((h_high - close) / (h_high - l_low)) * -100
+    h_high = highest_high(days, history["High"])
+    l_low = lowest_low(days, history["Low"])
+    W100R = ((h_high - history["Close"]) / (h_high - l_low)) * -100
 
     conditions = [W100R < buy_threshold, W100R > sell_threshold]
     choices = [True, False]
