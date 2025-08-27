@@ -6,10 +6,10 @@ from indicators import query_stock_exchange_history
 
 def create_statistic_tool():
     stats = tools.Statistics(key=lambda ind: ind.fitness.values)
-    stats.register("avg", np.mean)
-    stats.register("std", np.std)
-    stats.register("min", np.min)
-    stats.register("max", np.max)
+    stats.register("avg", np.mean, axis=0)
+    stats.register("std", np.std, axis=0)
+    stats.register("min", np.min, axis=0)
+    stats.register("max", np.max, axis=0)
     return stats
 
 
