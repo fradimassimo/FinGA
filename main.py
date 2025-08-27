@@ -36,7 +36,10 @@ def main():
         halloffame=halloffame,
         verbose=True,
     )
-    print(halloffame)
+    for rank, ind in enumerate(halloffame):
+        print(f"----------------{rank + 1}---------------")
+        print(ind)
+        print(ind.fitness.values)
 
 
 if __name__ == "__main__":
