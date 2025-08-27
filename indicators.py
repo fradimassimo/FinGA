@@ -12,10 +12,10 @@ class Signal(enum.IntEnum):
 
 
 def query_stock_exchange_history():
-    with open("nasdaq.json", "r") as f:
+    with open("stocks.json", "r") as f:
         ticker_list = json.load(f)
     stocks = yf.Tickers(ticker_list)
-    history = stocks.history(interval="1d", period="5y", start="2005-01-01")
+    history = stocks.history(interval="1d", period="10y", start="2005-01-01")
     assert history is not None
     history = history.dropna(
         axis=1
@@ -69,21 +69,24 @@ def lowest_low(days, low):
     return low.rolling(window=days).min()
 
 
-def momentum_indicator(momentum_days, buy_threshold, sell_threshold, close):
-    momentum = close - close.shift(momentum_days)
+def momentum_indicator(momentum_days, close):
+    close_n_days = close.shift(momentum_days)
+    momentum = (close - close_n_days) / close_n_days
 
-    conditions = [momentum < buy_threshold, momentum > sell_threshold]
-    choices = [Signal.BUY, Signal.SELL]
+    signs = np.sign(momentum)
+    sign_diff = signs.diff()
 
-    result = pd.Series(
-        np.select(conditions, choices, default=Signal.STAY), index=momentum.index
+    sell_signal = sign_diff == -2
+    buy_signal = sign_diff == 2
+
+    signals = np.where(
+        sell_signal, Signal.SELL, np.where(buy_signal, Signal.BUY, Signal.STAY)
     )
-    return result
+
+    return pd.Series(signals, index=momentum.index)
 
 
-def macd_crossover_indicator(
-    ema_short_days, ema_long_days, signal_days, buy_threshold, sell_threshold, close
-):
+def macd_crossover_indicator(ema_short_days, ema_long_days, signal_days, close):
     """
     shows trends, if the short ema dips below the long ema the trend is going down
     if the short ema goes above the long, the trend is going up
@@ -96,12 +99,17 @@ def macd_crossover_indicator(
     signal_curve = ema_indicator(signal_days, macd)
     macd_crossover = macd - signal_curve
 
-    conditions = [macd_crossover > buy_threshold, macd_crossover < sell_threshold]
-    choices = [Signal.BUY, Signal.SELL]
-    result = pd.Series(
-        np.select(conditions, choices, default=Signal.STAY), index=macd_crossover.index
+    signs = np.sign(macd_crossover)
+    sign_diff = signs.diff()
+
+    sell_signal = sign_diff == -2
+    buy_signal = sign_diff == 2
+
+    signals = np.where(
+        sell_signal, Signal.SELL, np.where(buy_signal, Signal.BUY, Signal.STAY)
     )
-    return result
+
+    return pd.Series(signals, index=macd_crossover.index)
 
 
 def ema_indicator(days, price):

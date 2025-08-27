@@ -13,25 +13,18 @@ import pandas as pd
 def feasible(individual):
     macd_short_days = individual[0]
     macd_long_days = individual[1]
-    # signal_days = individual[2]
-    macd_buy_threshold = individual[3]
-    macd_sell_threshold = individual[4]
 
-    # w100r_days = individual[5]
-    w100r_buy_threshold = individual[6]
-    w100r_sell_threshold = individual[7]
+    w100r_buy_threshold = individual[4]
+    w100r_sell_threshold = individual[5]
 
-    # momentum_days = individual[8]
-    momentum_buy_threshold = individual[9]
-    momentum_sell_threshold = individual[10]
+    macd_weight = individual[7]
+    w100r_weight = individual[8]
 
     if macd_short_days > macd_long_days:
         return False
-    if macd_buy_threshold < macd_sell_threshold:
-        return False
     if w100r_buy_threshold > w100r_sell_threshold:
         return False
-    if momentum_buy_threshold > momentum_sell_threshold:
+    if macd_weight + w100r_weight > 1:
         return False
     return True
 
@@ -44,21 +37,18 @@ def mutate(individual, indpb):
     if random.random() < indpb:
         individual[2] = max(1, min(individual[2] + random.randint(-2, 2), 100))
     if random.random() < indpb:
-        individual[3] = individual[3] + random.gauss(0, 5)
+        individual[3] = max(1, min(individual[3] + random.randint(-2, 2), 100))
     if random.random() < indpb:
-        individual[4] = individual[4] + random.gauss(0, 5)
+        individual[4] = max(-100, min(individual[4] + random.gauss(0, 5), 0))
     if random.random() < indpb:
-        individual[5] = max(1, min(individual[5] + random.randint(-2, 2), 100))
+        individual[5] = max(-100, min(individual[5] + random.gauss(0, 5), 0))
     if random.random() < indpb:
-        individual[6] = max(-100, min(individual[6] + random.gauss(0, 5), 0))
+        individual[6] = max(1, min(individual[6] + random.randint(-2, 2), 100))
     if random.random() < indpb:
-        individual[7] = max(-100, min(individual[7] + random.gauss(0, 5), 0))
+        individual[7] = random.random()
     if random.random() < indpb:
-        individual[8] = max(1, min(individual[8] + random.randint(-2, 2), 100))
-    if random.random() < indpb:
-        individual[9] = individual[9] + random.gauss(0, 5)
-    if random.random() < indpb:
-        individual[10] = individual[10] + random.gauss(0, 5)
+        individual[8] = random.random()
+
     return (individual,)
 
 
@@ -66,16 +56,16 @@ def evaluate(individual, history):
     macd_short_days = individual[0]
     macd_long_days = individual[1]
     signal_days = individual[2]
-    macd_buy_threshold = individual[3]
-    macd_sell_threshold = individual[4]
 
-    w100r_days = individual[5]
-    w100r_buy_threshold = individual[6]
-    w100r_sell_threshold = individual[7]
+    w100r_days = individual[3]
+    w100r_buy_threshold = individual[4]
+    w100r_sell_threshold = individual[5]
 
-    momentum_days = individual[8]
-    momentum_buy_threshold = individual[9]
-    momentum_sell_threshold = individual[10]
+    momentum_days = individual[6]
+
+    macd_weight = individual[7]
+    w100r_weight = individual[8]
+    momentum_weight = 1 - macd_weight - w100r_weight
 
     profits_per_stock = {}
     transactions_per_stock = {}
@@ -86,8 +76,6 @@ def evaluate(individual, history):
             macd_short_days,
             macd_long_days,
             signal_days,
-            macd_buy_threshold,
-            macd_sell_threshold,
             stock_history["Close"],
         )
         w100r = w100r_indicator(
@@ -95,19 +83,23 @@ def evaluate(individual, history):
         )
         momentum = momentum_indicator(
             momentum_days,
-            momentum_buy_threshold,
-            momentum_sell_threshold,
             stock_history["Close"],
         )
 
         df = pd.concat([stock_history["Close"], macd, w100r, momentum], axis=1)
         df.columns = ["Close", "MACD", "W100R", "MOMENTUM"]
 
-        df["buy_count"] = (df[["MACD", "W100R", "MOMENTUM"]] == Signal.BUY).sum(axis=1)
-        df["sell_count"] = (df[["MACD", "W100R", "MOMENTUM"]] == Signal.SELL).sum(
-            axis=1
+        df["buy_count"] = (
+            (df["MACD"] == Signal.BUY) * macd_weight
+            + (df["W100R"] == Signal.BUY) * w100r_weight
+            + (df["MOMENTUM"] == Signal.BUY) * momentum_weight
         )
-        conditions = [2 <= df["buy_count"], 2 <= df["sell_count"]]
+        df["sell_count"] = (
+            (df["MACD"] == Signal.SELL) * macd_weight
+            + (df["W100R"] == Signal.SELL) * w100r_weight
+            + (df["MOMENTUM"] == Signal.SELL) * momentum_weight
+        )
+        conditions = [0.5 <= df["buy_count"], 0.5 <= df["sell_count"]]
         choices = [Signal.BUY, Signal.SELL]
 
         df["signal"] = pd.Series(
@@ -150,8 +142,8 @@ def register_methods(toolbox, history):
     creator.create("Individual", list, fitness=creator.FitnessMaxMin)  # pyright: ignore[reportAttributeAccessIssue]
 
     toolbox.register("day_gene_init", random.randint, 1, 100)  # n_slow
-    toolbox.register("threshold_gene_init", random.gauss, 0, 50)
     toolbox.register("w100r_threshold_gene_init", lambda: -100 * random.random())
+    toolbox.register("indicator_weight_init", random.random)
     toolbox.register(
         "individual",
         tools.initCycle,
@@ -160,14 +152,12 @@ def register_methods(toolbox, history):
             toolbox.day_gene_init,
             toolbox.day_gene_init,
             toolbox.day_gene_init,
-            toolbox.threshold_gene_init,
-            toolbox.threshold_gene_init,
             toolbox.day_gene_init,
             toolbox.w100r_threshold_gene_init,
             toolbox.w100r_threshold_gene_init,
             toolbox.day_gene_init,
-            toolbox.threshold_gene_init,
-            toolbox.threshold_gene_init,
+            toolbox.indicator_weight_init,
+            toolbox.indicator_weight_init,
         ),
         n=1,
     )
@@ -175,4 +165,4 @@ def register_methods(toolbox, history):
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("mutate", mutate, indpb=0.2)
     toolbox.register("evaluate", evaluate, history=history)
-    toolbox.decorate("evaluate", tools.DeltaPenalty(feasible, (-10.0, 10.0)))
+    toolbox.decorate("evaluate", tools.DeltaPenalty(feasible, (-10.0, 10_000.0)))
