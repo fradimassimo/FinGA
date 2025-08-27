@@ -11,30 +11,3 @@ pip install -r requirements.txt
 # running the algorithm
 python main.py
 ```
-
-## TODO
-- add number of trades to optimization -> multi-objective pareto front
-- adding more stocks, more time periods, getting a combined profit
-- genetic programming ()
-- more plots
-
-## Goals
-Single stock, the goal is to generate a buy signal and a sell signal
-buying has to be first, we cannot buy if we already bought before, selling has to be after the buy, when we sold, we calculate fitness
-
-phenotype:
-- buy signal
-- sell signal
-
-fitness:
-- (sell_price - buy_cost) / days
-
-Genotype:
-- parameters of the indicator
-- Thresholds for the buy and sell signal
-
-
-Future:
-- combine multiple indicators
-- combine with genetic programming
-- Fitness should be an average of multiple scenarios

@@ -1,5 +1,27 @@
+import enum
 import pandas as pd
 import numpy as np
+import yfinance as yf
+import json
+
+
+class Signal(enum.IntEnum):
+    BUY = 1
+    SELL = 2
+    STAY = 0
+
+
+def query_stock_exchange_history():
+    with open("nasdaq.json", "r") as f:
+        ticker_list = json.load(f)
+    stocks = yf.Tickers(ticker_list)
+    history = stocks.history(interval="1d", period="5y", start="2005-01-01")
+    assert history is not None
+    history = history.dropna(
+        axis=1
+    )  # discard stocks that have prices missing (maybe they were added later than 2014)
+    history = history.swaplevel("Price", "Ticker", 1)  # pyright: ignore[reportArgumentType]
+    return history
 
 
 def w100r_indicator(days, buy_threshold, sell_threshold, history):
@@ -23,9 +45,11 @@ def w100r_indicator(days, buy_threshold, sell_threshold, history):
     W100R = ((h_high - history["Close"]) / (h_high - l_low)) * -100
 
     conditions = [W100R < buy_threshold, W100R > sell_threshold]
-    choices = [True, False]
+    choices = [Signal.BUY, Signal.SELL]
 
-    result = pd.Series(np.select(conditions, choices, default=None), index=W100R.index)
+    result = pd.Series(
+        np.select(conditions, choices, default=Signal.STAY), index=W100R.index
+    )
     return result
 
 
@@ -49,10 +73,10 @@ def momentum_indicator(momentum_days, buy_threshold, sell_threshold, close):
     momentum = close - close.shift(momentum_days)
 
     conditions = [momentum < buy_threshold, momentum > sell_threshold]
-    choices = [True, False]
+    choices = [Signal.BUY, Signal.SELL]
 
     result = pd.Series(
-        np.select(conditions, choices, default=None), index=momentum.index
+        np.select(conditions, choices, default=Signal.STAY), index=momentum.index
     )
     return result
 
@@ -73,9 +97,9 @@ def macd_crossover_indicator(
     macd_crossover = macd - signal_curve
 
     conditions = [macd_crossover > buy_threshold, macd_crossover < sell_threshold]
-    choices = [True, False]
+    choices = [Signal.BUY, Signal.SELL]
     result = pd.Series(
-        np.select(conditions, choices, default=None), index=macd_crossover.index
+        np.select(conditions, choices, default=Signal.STAY), index=macd_crossover.index
     )
     return result
 
