@@ -1,20 +1,24 @@
 from pathlib import Path
+import math
 from deap import base, tools, algorithms
 import numpy as np
 from individual import register_methods
 from indicators import query_stock_exchange_history
 import matplotlib.pyplot as plt
 import uuid
-import networkx
 import random
 
 
 def create_statistic_tool():
     stats = tools.Statistics(key=lambda ind: ind.fitness.values)
-    stats.register("avg", np.mean, axis=0)
-    stats.register("std", np.std, axis=0)
-    stats.register("min", np.min, axis=0)
-    stats.register("max", np.max, axis=0)
+    stats.register("avg", lambda s: np.mean(s, axis=0, where=np.isfinite(s)))
+    stats.register("std", lambda s: np.std(s, axis=0, where=np.isfinite(s)))
+    stats.register(
+        "min", lambda s: np.min(s, axis=0, where=np.isfinite(s), initial=float("inf"))
+    )
+    stats.register(
+        "max", lambda s: np.max(s, axis=0, where=np.isfinite(s), initial=float("-inf"))
+    )
     return stats
 
 
@@ -35,6 +39,7 @@ def plot_pareto_front(pareto_halloffame, results_dir):
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.savefig(f"{results_dir}/pareto.png")
+    plt.close()
 
 
 def plot_results(logbook, results_dir):
@@ -65,6 +70,7 @@ def plot_results(logbook, results_dir):
     plt.legend()
     plt.grid(True)
     plt.savefig(f"{results_dir}/profit.png")
+    plt.close()
 
     plt.figure(figsize=(10, 5))
     plt.plot(gen, transactions_min, "r--", label="Min num transactions")
@@ -76,15 +82,11 @@ def plot_results(logbook, results_dir):
     plt.legend()
     plt.grid(True)
     plt.savefig(f"{results_dir}/transactions.png")
+    plt.close()
 
 
-def plot_generations(history, toolbox, results_dir):
-    plt.close("all")
-    graph = networkx.DiGraph(history.genealogy_tree)
-    graph = graph.reverse()  # Make the graph top-down
-    colors = [toolbox.evaluate(history.genealogy_history[i])[0] for i in graph]
-    networkx.draw(graph, node_color=colors)
-    plt.savefig(f"{results_dir}/history.png")
+def pareto_similarity(a, b):
+    return all([math.isclose(am, bm, rel_tol=0.05) for (am, bm) in zip(a, b)])
 
 
 def main():
@@ -94,7 +96,7 @@ def main():
     register_methods(toolbox, stock_history)
     stats = create_statistic_tool()
 
-    pareto_halloffame = tools.ParetoFront()
+    pareto_halloffame = tools.ParetoFront(pareto_similarity)
     history = tools.History()
 
     initial_pop = toolbox.population(n=100)  # pyright: ignore[reportAttributeAccessIssue]
@@ -149,7 +151,6 @@ def main():
     Path(results_dir).mkdir(parents=True, exist_ok=True)
     plot_results(logbook, results_dir)
     plot_pareto_front(pareto_halloffame, results_dir)
-    plot_generations(history, toolbox, results_dir)
 
 
 if __name__ == "__main__":

@@ -132,7 +132,11 @@ def evaluate(individual, history):
 
         profits_per_stock[ticker] = sum(profits)
         transactions_per_stock[ticker] = len(profits)
-    return (sum(profits_per_stock.values()), sum(transactions_per_stock.values()))
+    total_profits = sum(profits_per_stock.values())
+    total_transactions = sum(transactions_per_stock.values())
+    if total_transactions == 0:
+        return (float("-inf"), float("inf"))
+    return (total_profits, total_transactions)
 
 
 def register_methods(toolbox, history):
@@ -165,4 +169,6 @@ def register_methods(toolbox, history):
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("mutate", mutate, indpb=0.2)
     toolbox.register("evaluate", evaluate, history=history)
-    toolbox.decorate("evaluate", tools.DeltaPenalty(feasible, (-10.0, 10_000.0)))
+    toolbox.decorate(
+        "evaluate", tools.DeltaPenalty(feasible, (float("-inf"), float("inf")))
+    )
