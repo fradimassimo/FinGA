@@ -11,3 +11,5 @@ pip install -r requirements.txt
 # running the algorithm
 python main.py
 ```
+## Project report
+[Link to the report](project_report.pdf)
