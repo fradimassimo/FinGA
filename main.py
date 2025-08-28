@@ -100,7 +100,7 @@ def main():
     initial_pop = toolbox.population(n=100)  # pyright: ignore[reportAttributeAccessIssue]
     history.update(initial_pop)
 
-    toolbox.register("mate", tools.cxUniform)
+    toolbox.register("mate", tools.cxUniform, indpb=0.5)
     toolbox.register("select", tools.selNSGA2)
 
     # for history graph
