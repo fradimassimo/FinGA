@@ -167,7 +167,7 @@ def register_methods(toolbox, history):
     )
 
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("mutate", mutate, indpb=0.2)
+    toolbox.register("mutate", mutate, indpb=0.4)
     toolbox.register("evaluate", evaluate, history=history)
     toolbox.decorate(
         "evaluate", tools.DeltaPenalty(feasible, (float("-inf"), float("inf")))

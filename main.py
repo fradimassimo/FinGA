@@ -33,7 +33,9 @@ def plot_pareto_front(pareto_halloffame, results_dir):
     fitnesses = np.array([list(ind.fitness.values) for ind in pareto_halloffame])
 
     plt.figure(figsize=(8, 6))
-    plt.scatter(fitnesses[:, 0], fitnesses[:, 1], c="red", s=80, label="Pareto front")
+    plt.scatter(
+        fitnesses[:, 0], fitnesses[:, 1], c="purple", s=80, label="Pareto front"
+    )
     plt.xlabel("Profit (maximize)")
     plt.ylabel("Number of Transactions (minimize)")
     plt.legend()
@@ -113,7 +115,7 @@ def main():
     #     initial_pop,
     #     toolbox,
     #     cxpb=0.5,
-    #     mutpb=0.2,
+    #     mutpb=0.3,
     #     ngen=100,
     #     stats=stats,
     #     halloffame=pareto_halloffame,
@@ -126,7 +128,7 @@ def main():
     #     mu=50,
     #     lambda_=100,
     #     cxpb=0.5,
-    #     mutpb=0.2,
+    #     mutpb=0.3,
     #     ngen=100,
     #     stats=stats,
     #     halloffame=pareto_halloffame,
@@ -139,7 +141,7 @@ def main():
         mu=50,
         lambda_=100,
         cxpb=0.5,
-        mutpb=0.2,
+        mutpb=0.3,
         ngen=100,
         stats=stats,
         halloffame=pareto_halloffame,
