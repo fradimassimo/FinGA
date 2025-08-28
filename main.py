@@ -98,16 +98,42 @@ def main():
     initial_pop = toolbox.population(n=100)  # pyright: ignore[reportAttributeAccessIssue]
     history.update(initial_pop)
 
-    toolbox.register("mate", tools.cxOnePoint)
-    toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("mate", tools.cxUniform)
+    toolbox.register("select", tools.selNSGA2)
 
     # for history graph
     toolbox.decorate("mate", history.decorator)
     toolbox.decorate("mutate", history.decorator)
 
-    _, logbook = algorithms.eaSimple(
+    # _, logbook = algorithms.eaSimple(
+    #     initial_pop,
+    #     toolbox,
+    #     cxpb=0.5,
+    #     mutpb=0.2,
+    #     ngen=100,
+    #     stats=stats,
+    #     halloffame=pareto_halloffame,
+    #     verbose=True,
+    # )
+
+    # _, logbook = algorithms.eaMuPlusLambda(
+    #     initial_pop,
+    #     toolbox,
+    #     mu=50,
+    #     lambda_=100,
+    #     cxpb=0.5,
+    #     mutpb=0.2,
+    #     ngen=100,
+    #     stats=stats,
+    #     halloffame=pareto_halloffame,
+    #     verbose=True,
+    # )
+
+    _, logbook = algorithms.eaMuCommaLambda(
         initial_pop,
         toolbox,
+        mu=50,
+        lambda_=100,
         cxpb=0.5,
         mutpb=0.2,
         ngen=100,
@@ -115,6 +141,7 @@ def main():
         halloffame=pareto_halloffame,
         verbose=True,
     )
+
     results_dir = f"results/{uuid.uuid4()}"
     Path(results_dir).mkdir(parents=True, exist_ok=True)
     plot_results(logbook, results_dir)
