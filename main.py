@@ -143,6 +143,7 @@ def main():
     )
 
     results_dir = f"results/{uuid.uuid4()}"
+    print(f"Saving results to {results_dir}")
     Path(results_dir).mkdir(parents=True, exist_ok=True)
     plot_results(logbook, results_dir)
     plot_pareto_front(pareto_halloffame, results_dir)
