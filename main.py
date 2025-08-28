@@ -6,6 +6,7 @@ from indicators import query_stock_exchange_history
 import matplotlib.pyplot as plt
 import uuid
 import networkx
+import random
 
 
 def create_statistic_tool():
@@ -87,6 +88,7 @@ def plot_generations(history, toolbox, results_dir):
 
 
 def main():
+    random.seed(1574147)
     toolbox = base.Toolbox()
     stock_history = query_stock_exchange_history()
     register_methods(toolbox, stock_history)
