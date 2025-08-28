@@ -53,6 +53,9 @@ def mutate(individual, indpb):
 
 
 def evaluate(individual, history):
+    if not feasible(individual):
+        return (float("-inf"), float("inf"))
+
     macd_short_days = individual[0]
     macd_long_days = individual[1]
     signal_days = individual[2]
@@ -169,6 +172,3 @@ def register_methods(toolbox, history):
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("mutate", mutate, indpb=0.4)
     toolbox.register("evaluate", evaluate, history=history)
-    toolbox.decorate(
-        "evaluate", tools.DeltaPenalty(feasible, (float("-inf"), float("inf")))
-    )

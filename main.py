@@ -6,6 +6,7 @@ from individual import register_methods
 from indicators import query_stock_exchange_history
 import matplotlib.pyplot as plt
 import uuid
+import multiprocessing
 import random
 
 
@@ -97,6 +98,9 @@ def main():
     stock_history = query_stock_exchange_history()
     register_methods(toolbox, stock_history)
     stats = create_statistic_tool()
+
+    pool = multiprocessing.Pool()
+    toolbox.register("map", pool.map)
 
     pareto_halloffame = tools.ParetoFront(pareto_similarity)
     history = tools.History()
