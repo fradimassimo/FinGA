@@ -126,7 +126,20 @@ def main():
     #     verbose=True,
     # )
 
-    # _, logbook = algorithms.eaMuPlusLambda(
+    _, logbook = algorithms.eaMuPlusLambda(
+        initial_pop,
+        toolbox,
+        mu=50,
+        lambda_=100,
+        cxpb=0.5,
+        mutpb=0.3,
+        ngen=50,
+        stats=stats,
+        halloffame=pareto_halloffame,
+        verbose=True,
+    )
+
+    # _, logbook = algorithms.eaMuCommaLambda(
     #     initial_pop,
     #     toolbox,
     #     mu=50,
@@ -138,19 +151,6 @@ def main():
     #     halloffame=pareto_halloffame,
     #     verbose=True,
     # )
-
-    _, logbook = algorithms.eaMuCommaLambda(
-        initial_pop,
-        toolbox,
-        mu=50,
-        lambda_=100,
-        cxpb=0.5,
-        mutpb=0.3,
-        ngen=100,
-        stats=stats,
-        halloffame=pareto_halloffame,
-        verbose=True,
-    )
 
     results_dir = f"results/{uuid.uuid4()}"
     print(f"Saving results to {results_dir}")

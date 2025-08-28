@@ -31,23 +31,23 @@ def feasible(individual):
 
 def mutate(individual, indpb):
     if random.random() < indpb:
-        individual[0] = max(1, min(individual[0] + random.randint(-2, 2), 100))
+        individual[0] = max(1, min(individual[0] + random.randint(-20, 20), 100))
     if random.random() < indpb:
-        individual[1] = max(1, min(individual[1] + random.randint(-2, 2), 100))
+        individual[1] = max(1, min(individual[1] + random.randint(-20, 20), 100))
     if random.random() < indpb:
-        individual[2] = max(1, min(individual[2] + random.randint(-2, 2), 100))
+        individual[2] = max(1, min(individual[2] + random.randint(-20, 20), 100))
     if random.random() < indpb:
-        individual[3] = max(1, min(individual[3] + random.randint(-2, 2), 100))
+        individual[3] = max(1, min(individual[3] + random.randint(-20, 20), 100))
     if random.random() < indpb:
-        individual[4] = max(-100, min(individual[4] + random.gauss(0, 5), 0))
+        individual[4] = max(-100, min(individual[4] + random.gauss(0, 20), 0))
     if random.random() < indpb:
-        individual[5] = max(-100, min(individual[5] + random.gauss(0, 5), 0))
+        individual[5] = max(-100, min(individual[5] + random.gauss(0, 20), 0))
     if random.random() < indpb:
-        individual[6] = max(1, min(individual[6] + random.randint(-2, 2), 100))
+        individual[6] = max(1, min(individual[6] + random.randint(-20, 20), 100))
     if random.random() < indpb:
-        individual[7] = random.random()
+        individual[7] = max(0, min(individual[7] + random.gauss(0, 0.5), 1))
     if random.random() < indpb:
-        individual[8] = random.random()
+        individual[8] = max(0, min(individual[8] + random.gauss(0, 0.5), 1))
 
     return (individual,)
 
@@ -170,5 +170,5 @@ def register_methods(toolbox, history):
     )
 
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("mutate", mutate, indpb=0.4)
+    toolbox.register("mutate", mutate, indpb=0.8)
     toolbox.register("evaluate", evaluate, history=history)
